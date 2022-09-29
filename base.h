@@ -55,6 +55,17 @@
 #define ADR 3
 #define INS 4
 
-typedef unsigned long Quad;
+#define INS_ONE 1
+#define INS_TWO 2
+#define INS_NINE 9
+#define INS_TEN 10
+
+#define SF_MASK 0x8000000000000000
+#define ZF_MASK 0x0000000000000000
+
+typedef unsigned long int Quad;
+
+#define QUAD_DATA_LEN sizeof(Quad)
+
 
 #endif //Y8664_CONFIG_H

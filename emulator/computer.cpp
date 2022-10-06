@@ -58,31 +58,72 @@ Quad &Y8664Computer::getReg(unsigned char number)
         GETREG(R13, r13)
         GETREG(R14, r14)
         default:
-            assert(false && "Unknown reg number");
+            assert(false && "Unknown reg index!");
     }
 }
 #undef GETREG
 
-void Y8664Computer::execute() {}
+void Y8664Computer::execute() {
+    while (statueIsAOK()){
+        decode();
+    }
+}
 
 void Y8664Computer::step() {}
+
+void Y8664Computer::decode() {
+
+    unsigned char ins_byte = memory.data[pc];
+    pcAdd(INS_ONE);
+    switch (ins_byte) {
+        case NOP:       {nop();     break;}
+        case HALT:      {halt();    break;}
+        case RRMOVQ:    {rrmovq();  break;}
+        case MRMOVQ:    {rrmovq();  break;}
+        case IRMOVQ:    {irmovq();  break;}
+        case RMMOVQ:    {rmmovq();  break;}
+        case ADDQ:      {addq();    break;}
+        case SUBQ:      {subq();    break;}
+        case ANDQ:      {andq();    break;}
+        case XORQ:      {xorq();    break;}
+        case JMP:       {jmp();     break;}
+        case JLE:       {jle();     break;}
+        case JQE:       {jqe();     break;}
+        case JNE:       {jne();     break;}
+        case JL:        {jl();      break;}
+        case JE:        {je();      break;}
+        case JQ:        {jq();      break;}
+        case CMOVLE:    {cmovle();  break;}
+        case CMOVL:     {cmovl();   break;}
+        case CMOVE:     {cmove();   break;}
+        case CMOVNE:    {cmovne();  break;}
+        case CMOVGE:    {cmovge();  break;}
+        case CMOVG:     {cmovg();   break;}
+        case RET:       {ret();     break;}
+        case CALL:      {call();    break;}
+        case PUSHQ:     {pushq();   break;}
+        case POPQ:      {popq();    break;}
+        default:
+            setStatue(INS);
+            // @todo 跳转到中断服务程序
+    }
+}
 
 void Y8664Computer::loadProgramFromDisk(const char *filepath) {}
 
 void Y8664Computer::halt()
 {
-    pcAdd(INS_ONE);
     setStatue(HALT);
+    // 进入Halt中断服务处理程序
 }
 
-void Y8664Computer::nop()
-{
-    pcAdd(INS_ONE);
-}
+void Y8664Computer::nop(){}
 
+/// ret返回指令模拟，对应操作
+/// PC = *stack.top
+/// stack.top += sizeof(Quad)
 void Y8664Computer::ret()
 {
-    pcAdd(INS_ONE);
     if(regGroup.rsp == stackBase){
         setStatue(ADR);
         // @todo 跳转到对应的处理程序
@@ -92,30 +133,44 @@ void Y8664Computer::ret()
     }
 }
 
-void Y8664Computer::rrmovq(Quad &rA, Quad &rB)
+/// rrmovq指令模拟，将寄存器rA的值赋予寄存器rB
+void Y8664Computer::rrmovq()
 {
-    pcAdd(INS_TWO);
+    GET_RA_FROM_MEM(pc, memory.data)
+    GET_RB_FROM_MEM(pc, memory.data)
+    pcAdd(INS_ONE);
     rB = rA;
 }
 
-void Y8664Computer::irmovq(Quad V, Quad &rB)
+/// irmovq指令模拟，将立即数V的值赋予寄存器rB
+void Y8664Computer::irmovq()
 {
-    pcAdd(INS_TEN);
+    GET_RB_FROM_MEM(pc, memory.data)
+    pcAdd(INS_ONE);
+    GET_DATA_FROM_MEM(V, pc-memory.startAddr, memory.data)
+    pcAdd(INS_EIGHT);
     rB = V;
 }
 
-void Y8664Computer::rmmovq(Quad &rA, Quad dest)
+/// rmmovq指令模拟，将寄存器rA的值赋予对应的内存位置
+void Y8664Computer::rmmovq()
 {
+    GET_RA_FROM_MEM(pc, memory.data)
+    pcAdd(INS_ONE);
+    GET_DATA_FROM_MEM(dest, pc-memory.startAddr, memory.data)
+    pcAdd(INS_EIGHT);
     ILL_ADR(dest)
     else{
-        pcAdd(INS_TEN);
         Quad* p = (Quad*)(memory.data + (dest - memory.startAddr));
         *p = rA;
     }
 }
 
-void Y8664Computer::mrmovq(Quad dest, Quad &rB) {
-    pcAdd(INS_TEN);
+/// mrmovq指令模拟，将特定内存位置的值存入寄存器rB
+void Y8664Computer::mrmovq() {
+    GET_RB_FROM_MEM(pc, memory.data)
+    pcAdd(INS_ONE);
+    GET_DATA_FROM_MEM(dest, pc - memory.startAddr, memory.data)
     ILL_ADR(dest)
     else{
         Quad* p = (Quad*)(memory.data + (dest - memory.startAddr));
@@ -128,17 +183,21 @@ void Y8664Computer::mrmovq(Quad dest, Quad &rB) {
                         if(res & SF_MASK){setSFFlag();}\
                         else{resetSFFlag();}
 
-void Y8664Computer::addq(Quad &rA, Quad &rB) {
-    pcAdd(INS_TWO);
+/// addq指令模拟，将rA和rB的值相加，并将得到的值放入rB
+void Y8664Computer::addq() {
+    GET_RA_FROM_MEM(pc, memory.data)
+    GET_RB_FROM_MEM(pc, memory.data)
+    pcAdd(INS_ONE);
     Quad res = rA + rB;
     if(res < rA || res < rB){setOFFlag();}
     else{resetOFFlag();}
     FLAG_SET(res)
     rB = res;
 }
-
-void Y8664Computer::subq(Quad &rA, Quad &rB) {
-    pcAdd(INS_TWO);
+void Y8664Computer::subq() {
+    GET_RA_FROM_MEM(pc, memory.data)
+    GET_RB_FROM_MEM(pc, memory.data)
+    pcAdd(INS_ONE);
     Quad res = rA - rB;
     resetOFFlag();
     FLAG_SET(res)
@@ -146,16 +205,20 @@ void Y8664Computer::subq(Quad &rA, Quad &rB) {
 }
 
 
-void Y8664Computer::andq(Quad &rA, Quad &rB) {
-    pcAdd(INS_TWO);
+void Y8664Computer::andq() {
+    GET_RA_FROM_MEM(pc, memory.data)
+    GET_RB_FROM_MEM(pc, memory.data)
+    pcAdd(INS_ONE);
     Quad res = rA & rB;
     resetOFFlag();
     FLAG_SET(res)
     rB = res;
 }
 
-void Y8664Computer::xorq(Quad &rA, Quad &rB) {
-    pcAdd(INS_TWO);
+void Y8664Computer::xorq() {
+    GET_RA_FROM_MEM(pc, memory.data)
+    GET_RB_FROM_MEM(pc, memory.data)
+    pcAdd(INS_ONE);
     Quad res = rA ^ rB;
     resetOFFlag();
     FLAG_SET(res)
@@ -163,49 +226,64 @@ void Y8664Computer::xorq(Quad &rA, Quad &rB) {
 }
 #undef FLAG_SET
 
-void Y8664Computer::cmovle(Quad &rA, Quad &rB) {
-    pcAdd(INS_TWO);
-    if(rA <= rB){rB = rA;}
+#define COND_MOV(COND, rA, rB) if(COND){ rB = rA; }
+void Y8664Computer::cmovle() {
+    GET_RA_FROM_MEM(pc, memory.data)
+    GET_RB_FROM_MEM(pc, memory.data)
+    pcAdd(INS_ONE);
+    COND_MOV(flag.ZF == 1 || (flag.SF != flag.OF), rA, rB)
 }
 
-void Y8664Computer::cmovl(Quad &rA, Quad &rB) {
-    pcAdd(INS_TWO);
-    if(rA < rB){rB = rA;}
+void Y8664Computer::cmovl() {
+    GET_RA_FROM_MEM(pc, memory.data)
+    GET_RB_FROM_MEM(pc, memory.data)
+    pcAdd(INS_ONE);
+    COND_MOV(flag.SF != flag.OF, rA, rB)
 }
 
-void Y8664Computer::cmove(Quad &rA, Quad &rB) {
-    pcAdd(INS_TWO);
-    if(rA == rB){rB = rA;}
+void Y8664Computer::cmove() {
+    GET_RA_FROM_MEM(pc, memory.data)
+    GET_RB_FROM_MEM(pc, memory.data)
+    pcAdd(INS_ONE);
+    COND_MOV(flag.ZF, rA, rB)
 }
 
-void Y8664Computer::cmovne(Quad &rA, Quad &rB) {
-    pcAdd(INS_TWO);
-    if(rA != rB){rB = rA;}
+void Y8664Computer::cmovne() {
+    GET_RA_FROM_MEM(pc, memory.data)
+    GET_RB_FROM_MEM(pc, memory.data)
+    pcAdd(INS_ONE);
+    COND_MOV(!flag.ZF, rA, rB)
 }
 
-void Y8664Computer::cmovge(Quad &rA, Quad &rB) {
-    pcAdd(INS_TWO);
-    if(rA >= rB){rB = rA;}
+void Y8664Computer::cmovge() {
+    GET_RA_FROM_MEM(pc, memory.data)
+    GET_RB_FROM_MEM(pc, memory.data)
+    pcAdd(INS_ONE);
+    COND_MOV(flag.SF == flag.OF, rA, rB)
 }
 
-void Y8664Computer::cmovg(Quad &rA, Quad &rB)
+void Y8664Computer::cmovg()
 {
-    pcAdd(INS_TWO);
-    if(rA > rB){rB = rA;}
-
+    GET_RA_FROM_MEM(pc, memory.data)
+    GET_RB_FROM_MEM(pc, memory.data)
+    pcAdd(INS_ONE);
+    COND_MOV(flag.ZF && (flag.SF == flag.OF), rA, rB)
 }
+#undef COND_MOV
 
-void Y8664Computer::jmp(Quad dest)
+void Y8664Computer::jmp()
 {
-    pcAdd(INS_NINE);
+    GET_DATA_FROM_MEM(dest, pc - memory.startAddr, memory.data)
+    pcAdd(INS_EIGHT);
     ILL_ADR(dest)
     else{pc = dest;}
 }
 
 /// 跳转条件 ZF = 1 || SF != OF
-void Y8664Computer::jle(Quad dest)
+void Y8664Computer::jle()
 {
-    pcAdd(INS_NINE);
+    GET_DATA_FROM_MEM(dest, pc - memory.startAddr, memory.data)
+    pcAdd(INS_EIGHT);
     if(flag.ZF == 1 || (flag.SF != flag.OF))
     {
         ILL_ADR(dest)
@@ -214,9 +292,10 @@ void Y8664Computer::jle(Quad dest)
 }
 
 /// 跳转条件 SF != OF
-void Y8664Computer::jl(Quad dest)
+void Y8664Computer::jl()
 {
-    pcAdd(INS_NINE);
+    GET_DATA_FROM_MEM(dest, pc - memory.startAddr, memory.data)
+    pcAdd(INS_EIGHT);
     if(flag.ZF != flag.OF)
     {
         ILL_ADR(dest)
@@ -225,9 +304,10 @@ void Y8664Computer::jl(Quad dest)
 }
 
 /// 跳转条件 ZF = 1
-void Y8664Computer::je(Quad dest)
+void Y8664Computer::je()
 {
-    pcAdd(INS_NINE);
+    GET_DATA_FROM_MEM(dest, pc - memory.startAddr, memory.data)
+    pcAdd(INS_EIGHT);
     if(flag.ZF)
     {
         ILL_ADR(dest)
@@ -236,9 +316,10 @@ void Y8664Computer::je(Quad dest)
 }
 
 /// 跳转条件 ZF = 0
-void Y8664Computer::jne(Quad dest)
+void Y8664Computer::jne()
 {
-    pcAdd(INS_NINE);
+    GET_DATA_FROM_MEM(dest, pc - memory.startAddr, memory.data)
+    pcAdd(INS_EIGHT);
     if(!flag.ZF)
     {
         ILL_ADR(dest)
@@ -247,9 +328,10 @@ void Y8664Computer::jne(Quad dest)
 }
 
 /// 跳转条件 SF = OF
-void Y8664Computer::jqe(Quad dest)
+void Y8664Computer::jqe()
 {
-    pcAdd(INS_NINE);
+    GET_DATA_FROM_MEM(dest, pc - memory.startAddr, memory.data)
+    pcAdd(INS_EIGHT);
     if(flag.SF == flag.OF)
     {
         ILL_ADR(dest)
@@ -258,9 +340,10 @@ void Y8664Computer::jqe(Quad dest)
 }
 
 /// 跳转条件 ZF = 0 && SF = OF
-void Y8664Computer::jq(Quad dest)
+void Y8664Computer::jq()
 {
-    pcAdd(INS_NINE);
+    GET_DATA_FROM_MEM(dest, pc - memory.startAddr, memory.data)
+    pcAdd(INS_EIGHT);
     if(flag.ZF == 0 && (flag.SF == flag.OF))
     {
         ILL_ADR(dest)
@@ -268,9 +351,10 @@ void Y8664Computer::jq(Quad dest)
     }
 }
 
-void Y8664Computer::call(Quad dest)
+void Y8664Computer::call()
 {
-    pcAdd(INS_NINE);
+    GET_DATA_FROM_MEM(dest, pc - memory.startAddr, memory.data)
+    pcAdd(INS_EIGHT);
     if(stackFull >= regGroup.rsp)
     {
         setStatue(ADR);
@@ -287,8 +371,9 @@ void Y8664Computer::call(Quad dest)
 
 }
 
-void Y8664Computer::pushq(Quad &rA) {
-    pcAdd(INS_TWO);
+void Y8664Computer::pushq() {
+    GET_RA_FROM_MEM(pc, memory.data)
+    pcAdd(INS_ONE);
     if(stackFull >= regGroup.rsp)
     {
         setStatue(ADR);
@@ -302,8 +387,9 @@ void Y8664Computer::pushq(Quad &rA) {
     }
 }
 
-void Y8664Computer::popq(Quad &rA) {
-    pcAdd(INS_TWO);
+void Y8664Computer::popq() {
+    GET_RA_FROM_MEM(pc, memory.data)
+    pcAdd(INS_ONE);
     if((stackBase - QUAD_DATA_LEN) <= regGroup.rsp)
     {
         setStatue(ADR);

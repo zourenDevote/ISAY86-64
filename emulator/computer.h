@@ -30,7 +30,7 @@ struct Regs{
 
 /// 内存
 struct Memory{
-    char data[MEMORY_SIZE];     // 内存区域
+    unsigned char data[MEMORY_SIZE];     // 内存区域
     Quad startAddr;            // 内存起始地址
     Quad endAddr;              // 内存结束地址
 };
@@ -97,6 +97,9 @@ private:
     void execute();
     void step();
 
+    /// 译码
+    void decode();
+
     /// 从磁盘中加载程序执行
     void loadProgramFromDisk(const char* filepath);
 
@@ -105,31 +108,31 @@ private:
     void nop();
     void ret();
 
-    void rrmovq(Quad& rA, Quad& rB);
-    void irmovq(Quad V, Quad& rB);
-    void rmmovq(Quad& rA, Quad dest);
-    void mrmovq(Quad dest, Quad& rB);
-    void addq(Quad& rA, Quad& rB);
-    void subq(Quad& rA, Quad& rB);
-    void andq(Quad& rA, Quad& rB);
-    void xorq(Quad& rA, Quad& rB);
-    void cmovle(Quad& rA, Quad& rB);
-    void cmovl(Quad& rA, Quad& rB);
-    void cmove(Quad& rA, Quad& rB);
-    void cmovne(Quad& rA, Quad& rB);
-    void cmovge(Quad& rA, Quad& rB);
-    void cmovg(Quad& rA, Quad& rB);
+    void rrmovq();
+    void irmovq();
+    void rmmovq();
+    void mrmovq();
+    void addq();
+    void subq();
+    void andq();
+    void xorq();
+    void cmovle();
+    void cmovl();
+    void cmove();
+    void cmovne();
+    void cmovge();
+    void cmovg();
 
-    void jmp(Quad dest);
-    void jle(Quad dest);
-    void jl(Quad dest);
-    void je(Quad dest);
-    void jne(Quad dest);
-    void jqe(Quad dest);
-    void jq(Quad dest);
-    void call(Quad dest);
-    void pushq(Quad& rA);
-    void popq(Quad& rA);
+    void jmp();
+    void jle();
+    void jl();
+    void je();
+    void jne();
+    void jqe();
+    void jq();
+    void call();
+    void pushq();
+    void popq();
 
 private:
     Quad    pc;         // 程序计数器

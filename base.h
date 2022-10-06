@@ -40,7 +40,7 @@
 #define JQE     0x75
 #define JQ      0x76
 #define CMOVLE  0x21
-#define COMVL   0x22
+#define CMOVL   0x22
 #define CMOVE   0x23
 #define CMOVNE  0x24
 #define CMOVGE  0x25
@@ -56,12 +56,22 @@
 #define INS 4
 
 #define INS_ONE 1
-#define INS_TWO 2
-#define INS_NINE 9
-#define INS_TEN 10
+#define INS_EIGHT 8
 
 #define SF_MASK 0x8000000000000000
 #define ZF_MASK 0x0000000000000000
+
+#define GET_LOW_FOUR_BIT(number) ((unsigned char)number & 0x01)
+#define GET_HIGH_FOUR_BIT(number) (((unsigned char)number >> 4) & 0x01)
+
+#define GET_RA_FROM_MEM(index, data) \
+    Quad &rA = getReg(GET_HIGH_FOUR_BIT(data[index]));
+
+#define GET_RB_FROM_MEM(index, data) \
+    Quad &rB = getReg(GET_LOW_FOUR_BIT(data[index]));
+
+#define GET_DATA_FROM_MEM(name, index, data) \
+    Quad name = *((Quad*)(data + index));
 
 typedef unsigned long int Quad;
 

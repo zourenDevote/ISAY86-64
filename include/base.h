@@ -61,8 +61,8 @@
 #define SF_MASK 0x8000000000000000
 #define ZF_MASK 0x0000000000000000
 
-#define GET_LOW_FOUR_BIT(number) ((unsigned char)number & 0x01)
-#define GET_HIGH_FOUR_BIT(number) (((unsigned char)number >> 4) & 0x01)
+#define GET_LOW_FOUR_BIT(number) ((unsigned char)number & 0x0F)
+#define GET_HIGH_FOUR_BIT(number) (((unsigned char)number >> 4) & 0x0F)
 
 #define GET_RA_FROM_MEM(index, data) \
     Quad &rA = getReg(GET_HIGH_FOUR_BIT(data[index]));
@@ -74,8 +74,42 @@
     Quad name = *((Quad*)(data + index));
 
 typedef unsigned long int Quad;
+typedef unsigned char Byte;
 
 #define QUAD_DATA_LEN sizeof(Quad)
+
+/// 记录寄存器信息
+struct Regs{
+    Quad rax;
+    Quad rcx;
+    Quad rdx;
+    Quad rbx;
+    Quad rsp;
+    Quad rbp;
+    Quad rdi;
+
+    Quad r8;
+    Quad r9;
+    Quad r10;
+    Quad r11;
+    Quad r12;
+    Quad r13;
+    Quad r14;
+
+    Quad rsi;
+};
+
+/// 标志位
+struct Flag{
+    unsigned char ZF: 1;
+    unsigned char SF: 1;
+    unsigned char OF: 1;
+};
+
+/// 错误码, 目前只有一个
+#define ERROR_CODE -1
+#define SUCCESS_CODE 0
+#define ERROR_UN_INS 1
 
 
 #endif //Y8664_CONFIG_H

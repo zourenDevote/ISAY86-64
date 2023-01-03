@@ -5,41 +5,13 @@
 #ifndef Y8664_CPUMSG_H
 #define Y8664_CPUMSG_H
 
-#include "../base.h"
-
-/// 记录寄存器信息
-struct Regs{
-    Quad rax;
-    Quad rcx;
-    Quad rdx;
-    Quad rbx;
-    Quad rsp;
-    Quad rbp;
-    Quad rdi;
-
-    Quad r8;
-    Quad r9;
-    Quad r10;
-    Quad r11;
-    Quad r12;
-    Quad r13;
-    Quad r14;
-
-    Quad rsi;
-};
+#include "../include/base.h"
 
 /// 内存
 struct Memory{
     unsigned char data[MEMORY_SIZE];     // 内存区域
     Quad startAddr;            // 内存起始地址
     Quad endAddr;              // 内存结束地址
-};
-
-/// 标志位
-struct Flag{
-    unsigned char ZF: 1;
-    unsigned char SF: 1;
-    unsigned char OF: 1;
 };
 
 /// Y86-64指令集架构计算机

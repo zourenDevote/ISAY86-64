@@ -133,4 +133,16 @@ struct AssemblyInst{
 };
 
 
+#define SIGNAL_INSTANCE(A)          \
+private:                            \
+    static A* instance;             \
+    A() = default;                  \
+public:                             \
+    static A* getInstance() {       \
+        if(instance == nullptr) {   \
+            instance = new A();     \
+        }                           \
+        return instance;            \
+    }
+
 #endif //Y8664_CONFIG_H

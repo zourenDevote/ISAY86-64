@@ -77,8 +77,17 @@ public:
     explicit QuadDeclNode(const std::vector<Quad>& data);
 
     AstType astType() override { return AstType::quad; }
+    [[nodiscard]] const std::vector<Quad>& getDataDecl() const { return numbers; }
+public:
+
 private:
     std::vector<Quad> numbers;
+
+public:
+    [[nodiscard]] Quad getInstStartAddress() const { return address; }
+    void setInstStartAddress(Quad addr) { address = addr; }
+private:
+    Quad address;
 };
 
 class FillDeclNode : public BaseAst {
@@ -90,8 +99,13 @@ public:
 
     AstType astType() override { return AstType::fill; }
 private:
-    Quad fill_size;          // 填充大小
+    Quad fill_size;     // 填充大小
     Byte fill_value;    // 填充值
+public:
+    [[nodiscard]] Quad getInstStartAddress() const { return address; }
+    void setInstStartAddress(Quad addr) { address = addr; }
+private:
+    Quad address;
 };
 
 class PosDeclNode : public BaseAst {
@@ -106,8 +120,15 @@ private:
 
 class MainDeclNode : public BaseAst {
 public:
-    MainDeclNode() = default;
+    MainDeclNode() : address() {}
     AstType astType() override { return AstType::main; }
+
+public:
+    [[nodiscard]] Quad getInstStartAddress() const { return address; }
+    void setInstStartAddress(Quad addr) { address = addr; }
+
+private:
+    Quad address;       // 堆栈初始指针
 };
 
 class StackDeclNode : public BaseAst {
@@ -119,8 +140,8 @@ public:
 
     AstType astType() override { return AstType::stack; }
 private:
-    Quad stack_size;       // 栈的大小
-    Quad address;   // 堆栈初始指针
+    Quad stack_size;    // 栈的大小
+    Quad address;       // 堆栈初始指针
 };
 
 class LabelDeclNode : public BaseAst {
@@ -131,6 +152,12 @@ public:
     AstType astType() override { return AstType::label; }
 private:
     std::string label_name;
+
+public:
+    [[nodiscard]] Quad getInstStartAddress() const { return address; }
+    void setInstStartAddress(Quad addr) { address = addr; }
+private:
+    Quad address;
 };
 
 class AssemblyInstNode : public BaseAst {
@@ -143,10 +170,18 @@ public:
     [[nodiscard]] OperandNode* getFirstOperand() const { return op1; }
     [[nodiscard]] OperandNode* getSecondOperand() const { return op2; }
     [[nodiscard]] int getOperatorCount();
+
+public:
+    [[nodiscard]] Quad getInstStartAddress() const { return address; }
+    void setInstStartAddress(Quad addr) { address = addr; }
+
 private:
     InstNode* inst;
     OperandNode* op1;
     OperandNode* op2;
+
+private:
+    Quad address;
 };
 
 class AssemblyCode : public BaseAst {
@@ -154,7 +189,7 @@ public:
     AssemblyCode() = default;
 
     void addStmt(BaseAst* node) { stmts.push_back(node); }
-    [[nodiscard]] const std::vector<BaseAst*>& getStmt() const { return stmts; }
+    [[nodiscard]] const std::vector<BaseAst*>& getStmts() const { return stmts; }
 
     AstType astType() override { return AstType::assembly_code; }
 private:

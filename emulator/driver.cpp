@@ -13,8 +13,7 @@
 #include "../third_party/cxxopts.hpp"
 #include "../assember/assember_support.h"
 #include "../third_party/antlr4/runtime/src/antlr4-runtime.h"
-#include "../assember/grammer/ParserParser.h"
-#include "../assember/grammer/ParserLexer.h"
+#include "../assember/assember.h"
 
 using namespace std;
 
@@ -138,19 +137,53 @@ bool parseAndExecuteInst(string& ins){
     return true;
 }
 
+// 交互式命令窗口
+void interactive_cli() {
+        char ins[256];
+    string inst;
+    emulator = new InsEmulator();
+
+    // 执行指令模拟执行
+    while(true){
+        // 1. 读取一条指令
+        cout<<"Y8664InstEmulator>>:";
+        cin.getline(ins, 256);
+#ifdef GNU
+        add_history(ins);
+#endif
+        inst = ins;
+        if(strcmp(ins, "exit") == 0
+           || strcmp(ins, "quit") == 0){
+            cout<<"Program exit\n";
+            break;
+        }
+        // 2. 解析并执行指令
+        parseAndExecuteInst(inst);
+    }
+    delete emulator;
+}
+
 void domain(int argc, char* argv[]) {
 
     cxxopts::Options opt{"Y8664Emulator", ""};
+
+    std::string outPath;
+    std::string inputPath;
 
     opt.add_options()
     ("h,help", "Get help for this program.")
     ("i,input", "The filepath of input assembly file.", cxxopts::value<std::string>())
     ("o,output", "The output filepath of this file.", cxxopts::value<std::string>()->default_value("a.elf"))
-    ("e,elf", "The filepath of elf file.", cxxopts::value<std::string>());
+    ("e,elf", "The filepath of elf file.", cxxopts::value<std::string>())
+    ("c, cli", "Interactive cli.")
+    ("d, dump", "Dump the elf file.", cxxopts::value<bool>());
 
-    std::string inputPath;
+
 
     auto res= opt.parse(argc, argv);
+
+    outPath = res["output"].as<std::string>();
+
     if(res.count("help") || res.count("h")) {
         cout << opt.help();
         ::exit(0);
@@ -160,9 +193,19 @@ void domain(int argc, char* argv[]) {
         inputPath = res["input"].as<std::string>();
     }
 
-    std::string outPath = res["output"].as<std::string>();
+
     if(res.count("e") || res.count(("elf"))) {
         inputPath = res["elf"].as<std::string>();
+    }
+
+    if(res.count("c") || res.count("cli")) {
+        interactive_cli();
+        return;
+    }
+
+    if(res.count("dump")) {
+        objdumpElf(inputPath, std::cout);
+        return;
     }
 
     /// 首先做一个简单的识别器，.s文件介绍自己定义一个格式
@@ -176,9 +219,24 @@ void domain(int argc, char* argv[]) {
 
         ParserParser parser(&token);
 
-        for(const auto& tk : lexer.getAllTokens()) {
-            cout << tk->toString() << endl;
+        auto topAstNode = any_cast<AssemblyCode*>(AstBuilder().visitCode(parser.code()));
+
+        auto checker = AssemblyVisitor();
+        checker.visit(topAstNode);
+
+        if(checker.getCheckResult().size() != 0) {
+            for(const auto& res : checker.getCheckResult()) {
+                printf("[Error](%s:%d:%d): %s\n", inputPath.c_str(), res.line_no.row, res.line_no.column, res.reason.c_str());
+            }
+            exit(-1);
         }
+
+        AssemblySimplyElfGenerate generator;
+
+        generator.visit(topAstNode);
+
+        dumpElfToFile(generator.getElf(), outPath);
+
     }
     else if(endsWith(inputPath, ".elf")) {
 
@@ -188,27 +246,5 @@ void domain(int argc, char* argv[]) {
 
 int main(int argc, char* argv[]){
     domain(argc, argv);
-//    char ins[256];
-//    string inst;
-//    emulator = new InsEmulator();
-//
-//    // 执行指令模拟执行
-//    while(true){
-//        // 1. 读取一条指令
-//        cout<<"Y8664InstEmulator>>:";
-//        cin.getline(ins, 256);
-//#ifdef GNU
-//        add_history(ins);
-//#endif
-//        inst = ins;
-//        if(strcmp(ins, "exit") == 0
-//           || strcmp(ins, "quit") == 0){
-//            cout<<"Program exit\n";
-//            break;
-//        }
-//        // 2. 解析并执行指令
-//        parseAndExecuteInst(inst);
-//    }
-//    delete emulator;
 }
 

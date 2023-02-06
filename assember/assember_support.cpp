@@ -6,6 +6,7 @@
 #include <sstream>
 #include <cstring>
 #include <unordered_map>
+#include <unordered_set>
 
 std::string intToHexStr(Quad v) //transfer string to hex-string
 {
@@ -16,7 +17,7 @@ std::string intToHexStr(Quad v) //transfer string to hex-string
     return result;
 }
 
-const std::unordered_map<Byte , std::string> regMap{
+static std::unordered_map<Byte , std::string> regMap{
         {RAX, "rax"}, {RCX, "rcx"}, {RBX, "rbx"}, {RSP, "rsp"},
         {RBP, "rbp"}, {RSI, "rsi"}, {RDI, "rdi"}, {R8, "r8"},
         {R9, "r9"}, {R10, "r10"}, {R11, "r11"}, {R12, "r12"},
@@ -27,11 +28,11 @@ const std::unordered_map<Byte , std::string> regMap{
 ErrorOrSuccess getReg(Byte byte) {
     auto it = regMap.find(byte);
     if(it != regMap.end())
-        return {SUCCESS_CODE, *it};
+        return {SUCCESS_CODE, regMap[byte]};
     return {ERROR_CODE, ERROR_CODE};
 }
 
-static ErrorOrSuccess getReg(const std::string& reg) {
+ErrorOrSuccess getReg(const std::string& reg) {
     for(const auto& it : regMap) {
         if(strcmp(it.second.c_str(), reg.c_str()) == 0)
             return {SUCCESS_CODE, it.first};
@@ -39,7 +40,7 @@ static ErrorOrSuccess getReg(const std::string& reg) {
     return {ERROR_CODE, ERROR_CODE};
 }
 
-const std::unordered_map<Byte , std::string> assemblyMap{
+static std::unordered_map<Byte , std::string> assemblyMap{
         {HALT, "halt"}, {NOP, "nop"}, {RRMOVQ, "rrmovq"}, {IRMOVQ, "irmovq"},
         {RMMOVQ, "rmmovq"}, {MRMOVQ, "mrmovq"}, {ADDQ, "addq"}, {SUBQ, "subq"},
         {ANDQ, "andq"}, {XORQ, "xorq"}, {JMP, "jmp"}, {JLE, "jle"},
@@ -59,20 +60,14 @@ ErrorOrSuccess assemblyToCode(const std::string& inst) {
 }
 
 ErrorOrSuccess assemblyToCode(Byte byte) {
-    auto it = regMap.find(byte);
-    if(it != regMap.end())
-        return {SUCCESS_CODE, *it};
+    auto it = assemblyMap.find(byte);
+    if(it != assemblyMap.end())
+        return {SUCCESS_CODE, assemblyMap[byte]};
     return {ERROR_CODE, ERROR_CODE};
 }
 
 DisAssemblyConverter* DisAssemblyConverter::instance = nullptr;
 
-DisAssemblyConverter *DisAssemblyConverter::getInstance() {
-    if(instance == nullptr) {
-        instance = new DisAssemblyConverter();
-    }
-    return instance;
-}
 
 ErrorOrSuccess DisAssemblyConverter::disassembly(const MachineInst &inst) {
     switch (inst.op_code) {
@@ -90,7 +85,7 @@ ErrorOrSuccess DisAssemblyConverter::disassembly(const MachineInst &inst) {
             if(res1.code())
                 return {ERROR_CODE, ERROR_CODE};
             auto imm = intToHexStr(inst.other);
-            return {SUCCESS_CODE, AssemblyInst{"irmovq", {res1.as<std::string>(), imm}}};
+            return {SUCCESS_CODE, AssemblyInst{"irmovq", {imm, res1.as<std::string>()}}};
         }
         case RMMOVQ: {
             auto res1 = getReg(GET_HIGH_FOUR_BIT(inst.byte));
@@ -104,7 +99,7 @@ ErrorOrSuccess DisAssemblyConverter::disassembly(const MachineInst &inst) {
             if(res1.code())
                 return {ERROR_CODE, ERROR_CODE};
             auto dest = intToHexStr(inst.other);
-            return {SUCCESS_CODE, AssemblyInst{"mrmovq", {res1.as<std::string>(), dest}}};
+            return {SUCCESS_CODE, AssemblyInst{"mrmovq", {dest, res1.as<std::string>()}}};
         }
         case ADDQ:{
             auto res1 = getReg(GET_HIGH_FOUR_BIT(inst.byte));
@@ -230,12 +225,6 @@ ErrorOrSuccess DisAssemblyConverter::disassembly(const MachineInst &inst) {
 
 AssemblyConverter* AssemblyConverter::instance = nullptr;
 
-AssemblyConverter *AssemblyConverter::getInstance() {
-    if(instance == nullptr) {
-        instance = new AssemblyConverter();
-    }
-    return instance;
-}
 
 ErrorOrSuccess AssemblyConverter::assembly(const AssemblyInst &inst) {
 
@@ -477,4 +466,61 @@ ErrorOrSuccess AssemblyConverter::assembly(const AssemblyInst &inst) {
         return {SUCCESS_CODE, MachineInst{POPQ, bt, 0, 2}};
     }
     return {ERROR_CODE, ERROR_CODE};
+}
+
+MachineInstConverter* MachineInstConverter::instance = nullptr;
+
+
+const std::unordered_set<Byte> oneBytesInstSet = {
+    HALT, NOP, RET
+};
+
+const std::unordered_set<Byte> twoBytesInstSet = {
+    RRMOVQ, ADDQ, SUBQ, ANDQ, XORQ, CMOVLE, CMOVL, CMOVE, CMOVNE, CMOVGE, CMOVG, PUSHQ, POPQ
+};
+
+const std::unordered_set<Byte> nineBytesInstSet = {
+    JMP, JLE, JL, JE, JNE, JQE, JQ, CALL
+};
+
+const std::unordered_set<Byte> tenBytesInstSet = {
+    IRMOVQ, RMMOVQ, MRMOVQ
+};
+
+
+ErrorOrSuccess MachineInstConverter::readMachineInstFromBytes(const std::vector<Byte> &bytes) {
+
+    std::vector<MachineInst> insts;
+
+    auto it = bytes.begin();
+    auto end = bytes.end();
+
+    while(it != end) {
+        Byte op = *it++;
+        if(oneBytesInstSet.find(op) != oneBytesInstSet.end()) {
+            insts.push_back({op, 0, 0, 1});
+        }
+        else if(twoBytesInstSet.find(op) != twoBytesInstSet.end()) {
+            insts.push_back({op, *it++, 0, 2});
+        }
+        else if(nineBytesInstSet.find(op) != nineBytesInstSet.end()) {
+            Quad num = 0x0;
+            for(int i = 0 ; i < 8 ; i++) {
+                num |= ((Quad)(*it++) << (i*8));
+            }
+            insts.push_back({op, 0, num, 9});
+        }
+        else if(tenBytesInstSet.find(op) != tenBytesInstSet.end()){
+            Byte bt = *it++;
+            Quad num = 0x0;
+            for(int i = 0 ; i < 8 ; i++) {
+                num |= ((Quad)(*it++) << (i*8));
+            }
+            insts.push_back({op, bt, num, 10});
+        }
+        else {
+            return {ERROR_CODE, insts};
+        }
+    }
+    return {SUCCESS_CODE, insts};
 }

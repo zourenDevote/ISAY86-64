@@ -9,7 +9,7 @@
 using namespace std;
 
 std::any AstBuilder::visitCode(ParserParser::CodeContext *context){
-    AssemblyCode* code = new AssemblyCode();
+    auto code = new AssemblyCode();
     for(const auto&stmt : context->stmt())
         code->addStmt(any_cast<BaseAst*>(visitStmt(stmt)));
     return code;
@@ -18,28 +18,45 @@ std::any AstBuilder::visitCode(ParserParser::CodeContext *context){
 std::any AstBuilder::visitStmt(ParserParser::StmtContext *context) {
 
     if(context->assemblyinst()) {
-        return any_cast<BaseAst*>(visitAssemblyinst(context->assemblyinst()));
+        return visitAssemblyinst(context->assemblyinst());
     }
     else if(context->quaddecl()) {
-        return any_cast<BaseAst*>(visitQuaddecl(context->quaddecl()));
+        return visitQuaddecl(context->quaddecl());
     }
     else if(context->filldecl()) {
-        return any_cast<BaseAst*>(visitFilldecl(context->filldecl()));
+        return visitFilldecl(context->filldecl());
     }
     else if(context->posdecl()) {
-        return any_cast<BaseAst*>(visitPosdecl(context->posdecl()));
+        return visitPosdecl(context->posdecl());
     }
     else if(context->maindecl()) {
-        return any_cast<BaseAst*>(visitMaindecl(context->maindecl()));
+        return visitMaindecl(context->maindecl());
     }
     else if(context->stackdecl()) {
-        return any_cast<BaseAst*>(visitStackdecl(context->stackdecl()));
+        return visitStackdecl(context->stackdecl());
     }
-    return any_cast<BaseAst*>(visitLabeldecl(context->labeldecl()));
+    return visitLabeldecl(context->labeldecl());
+}
+
+std::any AstBuilder::visitAssemblyinst(ParserParser::AssemblyinstContext *context) {
+    auto inst = any_cast<InstNode*>(visit(context->inst()));
+    switch (context->operand().size()) {
+        case 0:{
+            return dynamic_cast<BaseAst*>(new AssemblyInstNode(inst));
+        }
+        default:{
+            auto op1 = any_cast<OperandNode*>(visitOperand(context->operand(0)));
+            OperandNode* op2 = nullptr;
+            if(context->operand().size() >= 2) {
+                op2 = any_cast<OperandNode*>(visitOperand(context->operand(1)));
+            }
+            return dynamic_cast<BaseAst*>(new AssemblyInstNode(inst, op1, op2));
+        }
+    }
 }
 
 std::any AstBuilder::visitInst(ParserParser::InstContext *context) {
-    InstNode* inst = new InstNode(context->getText(), assemblyToCode(context->getText()).as<Byte>());
+    auto inst = new InstNode(context->getText(), assemblyToCode(context->getText()).as<Byte>());
     return inst;
 }
 
@@ -59,28 +76,29 @@ std::any AstBuilder::visitQuaddecl(ParserParser::QuaddeclContext *context) {
     for(const auto& number : context->NUMBER()) {
         data.push_back(strToInt(number->getText()).as<Quad>());
     }
-    return new QuadDeclNode(data);
+    return dynamic_cast<BaseAst*>(new QuadDeclNode(data));
 }
 
 std::any AstBuilder::visitFilldecl(ParserParser::FilldeclContext *context) {
-    return new FillDeclNode(strToInt(context->NUMBER(0)->getText()).as<Quad>(), strToInt(context->NUMBER(1)->getText()).as<Byte>());
+    return dynamic_cast
+            <BaseAst*>(
+            new FillDeclNode(strToInt(context->NUMBER(0)->getText()).as<Quad>(), (Byte)(strToInt(context->NUMBER(1)->getText()).as<Quad>()))
+            );
 }
 
 std::any AstBuilder::visitPosdecl(ParserParser::PosdeclContext *context) {
-    return new PosDeclNode(strToInt(context->NUMBER()->getText()).as<Quad>());
+    return dynamic_cast<BaseAst*>(new PosDeclNode(strToInt(context->NUMBER()->getText()).as<Quad>()));
 }
 
 std::any AstBuilder::visitMaindecl(ParserParser::MaindeclContext *context) {
-    return new MainDeclNode();
+    return dynamic_cast<BaseAst*>(new MainDeclNode());
 }
 
 std::any AstBuilder::visitStackdecl(ParserParser::StackdeclContext *context) {
-    return new StackDeclNode(strToInt(context->NUMBER(0)->getText()).as<Quad>(), strToInt(context->NUMBER(1)->getText()).as<Quad>());
+    return dynamic_cast<BaseAst*>(new StackDeclNode(strToInt(context->NUMBER(0)->getText()).as<Quad>(), strToInt(context->NUMBER(1)->getText()).as<Quad>()));
 }
 
 std::any AstBuilder::visitLabeldecl(ParserParser::LabeldeclContext *context) {
-    return new LabelDeclNode(context->LABEL()->getText());
+    return dynamic_cast<BaseAst*>(new LabelDeclNode(context->LABEL()->getText()));
 }
-
-
 

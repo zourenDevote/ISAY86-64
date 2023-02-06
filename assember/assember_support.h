@@ -9,27 +9,34 @@
 #include "../error/error.h"
 
 ErrorOrSuccess assemblyToCode(const std::string& inst);
+ErrorOrSuccess getReg(const std::string& reg);
 
 // 汇编转换器
-class AssemblyConverter{
+class AssemblyConverter{;
 public:
-    AssemblyConverter() = default;
-    static AssemblyConverter* getInstance();
     //汇编转换
     ErrorOrSuccess assembly(const AssemblyInst& inst);
-private:
-    static AssemblyConverter* instance;
+
+SIGNAL_INSTANCE(AssemblyConverter)
 };
 
 // 反汇编转换器
 class DisAssemblyConverter{
 public:
-    DisAssemblyConverter() = default;
-    static DisAssemblyConverter* getInstance();
 
     ErrorOrSuccess disassembly(const MachineInst& inst);
-private:
-    static DisAssemblyConverter* instance;
+
+SIGNAL_INSTANCE(DisAssemblyConverter)
+};
+
+
+// 机器指令转换
+class MachineInstConverter {
+public:
+
+    ErrorOrSuccess readMachineInstFromBytes(const std::vector<Byte>& bytes);
+
+SIGNAL_INSTANCE(MachineInstConverter)
 };
 
 #endif //Y8664_ASSEMBER_SUPPORT_H
